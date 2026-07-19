@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Carpool Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #12261E;
+    --paper: #F6F3EC;
+    --gate-green: #1B6E4D;
+    --gate-green-dark: #124B33;
+    --amber: #C97A2B;
+    --line-gray: #D8D2C4;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 20px 48px;
+  }
+  .stub {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border: 1px solid var(--line-gray);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(18,38,30,0.06);
+  }
+  .stub-header {
+    background: var(--gate-green);
+    color: var(--paper);
+    padding: 18px 22px;
+  }
+  .stub-header .brand {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    letter-spacing: 0.02em;
+  }
+  .stub-header .tag {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    opacity: 0.85;
+  }
+  .stub-body { padding: 26px 24px 22px; }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6B6355;
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid var(--line-gray);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--gate-green); border-color: var(--gate-green); }
+
+  button.primary {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    color: var(--paper);
+    background: var(--gate-green);
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { background: #A9A296; cursor: default; transform: none; }
+  button.secondary {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: 1.5px solid var(--line-gray);
+    border-radius: 10px;
+    background: transparent;
+    color: #6B6355;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .status-screen { text-align: center; padding: 10px 0 6px; }
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 5px 12px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .badge-waiting { background: #EFE9D8; color: var(--amber); }
+  .badge-ready { background: #E4F2EA; color: var(--gate-green-dark); }
+
+  .status-headline {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    line-height: 1.25;
+    margin: 0 0 10px;
+  }
+  .status-sub { font-size: 14px; color: #6B6355; margin-bottom: 26px; }
+
+  .family-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    color: #6B6355;
+    margin-top: 18px;
+  }
+
+  .footer-note { font-size: 12px; color: #A9A296; margin-top: 18px; text-align: center; max-width: 420px; }
+</style>
+</head>
+<body>
+
+<div class="stub" id="app">
+  <div class="stub-header">
+    <div class="brand">Carpool Check-In</div>
+    <div class="tag">Tap twice. That's it.</div>
+  </div>
+  <div class="stub-body" id="body"></div>
+</div>
+<div class="footer-note" id="footerNote"></div>
+
+<script>
+// STEP 6 of the guide: paste your deployed Apps Script URL below.
+const APPS_SCRIPT_URL = 'REPLACE_WITH_YOUR_DEPLOYED_WEB_APP_URL';
+const STORAGE_KEY = 'carpool_profile';
+
+function getProfile() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+function saveProfile(p) { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+function getTripState() {
+  const raw = sessionStorage.getItem('carpool_trip');
+  return raw ? JSON.parse(raw) : { stage: 'idle' };
+}
+function setTripState(s) { sessionStorage.setItem('carpool_trip', JSON.stringify(s)); }
+
+async function callApi(action, params) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.keys(params || {}).forEach(k => url.searchParams.set(k, params[k]));
+  const res = await fetch(url);
+  return res.json();
+}
+
+const body = document.getElementById('body');
+const footerNote = document.getElementById('footerNote');
+
+function render() {
+  const profile = getProfile();
+  if (!profile) return renderSetup();
+  const trip = getTripState();
+  if (trip.stage === 'idle') return renderIdle(profile);
+  if (trip.stage === 'inline') return renderInLine(profile);
+  if (trip.stage === 'done') return renderDone(profile);
+}
+
+function renderSetup(existing) {
+  const p = existing || {};
+  footerNote.textContent = '';
+  body.innerHTML = `
+    <div class="field"><label>Family Name</label>
+      <input id="f_family" value="${p.family || ''}" placeholder="e.g. Khor Family"></div>
+    <div class="field"><label>Child's Name</label>
+      <input id="f_child" value="${p.child || ''}" placeholder="e.g. Neo"></div>
+    <div class="field"><label>Classroom Number</label>
+      <input id="f_classroom" value="${p.classroom || ''}" placeholder="e.g. 108"></div>
+    <button class="primary" id="saveBtn">Save & Continue</button>
+  `;
+  document.getElementById('saveBtn').onclick = () => {
+    const profile = {
+      family: document.getElementById('f_family').value.trim(),
+      child: document.getElementById('f_child').value.trim(),
+      classroom: document.getElementById('f_classroom').value.trim()
+    };
+    if (!profile.family || !profile.classroom) { alert('Please fill in family name and classroom.'); return; }
+    saveProfile(profile);
+    render();
+  };
+}
+
+function renderIdle(profile) {
+  footerNote.innerHTML = `<span onclick="renderSetup(getProfile())" style="text-decoration:underline;cursor:pointer">Edit family info</span>`;
+  body.innerHTML = `
+    <div class="status-screen">
+      <div class="status-headline">Pulling into the line?</div>
+      <div class="status-sub">${profile.child ? profile.child + ' · ' : ''}Room ${profile.classroom}</div>
+      <button class="primary" id="inLineBtn">I've Arrived — In Line</button>
+    </div>
+  `;
+  document.getElementById('inLineBtn').onclick = async () => {
+    document.getElementById('inLineBtn').disabled = true;
+    document.getElementById('inLineBtn').textContent = 'Checking in…';
+    const res = await callApi('checkin', {
+      family: profile.family, classroom: profile.classroom
+    });
+    if (res.ok) {
+      setTripState({ stage: 'inline' });
+      render();
+    } else {
+      alert('Something went wrong — try again.');
+      render();
+    }
+  };
+}
+
+function renderInLine(profile) {
+  footerNote.textContent = '';
+  body.innerHTML = `
+    <div class="status-screen">
+      <span class="status-badge badge-waiting">In Line</span>
+      <div class="status-headline">You're checked in.</div>
+      <div class="status-sub">The classroom will be flagged automatically once it's your group's turn — no need to tap again until pickup.</div>
+      <div class="family-name">${profile.family}</div>
+      <button class="secondary" id="gotEmBtn" style="margin-top:24px">Got 'em — child is in the car</button>
+    </div>
+  `;
+  document.getElementById('gotEmBtn').onclick = async () => {
+    document.getElementById('gotEmBtn').disabled = true;
+    await callApi('gotem', { family: profile.family });
+    setTripState({ stage: 'done' });
+    render();
+  };
+}
+
+function renderDone(profile) {
+  footerNote.textContent = '';
+  body.innerHTML = `
+    <div class="status-screen">
+      <span class="status-badge badge-ready">Complete</span>
+      <div class="status-headline">See you tomorrow!</div>
+      <div class="status-sub">Pickup complete for ${profile.child || profile.family}.</div>
+      <button class="primary" id="resetBtn" style="margin-top:10px">Done</button>
+    </div>
+  `;
+  document.getElementById('resetBtn').onclick = () => {
+    setTripState({ stage: 'idle' });
+    render();
+  };
+}
+
+render();
+</script>
+</body>
+</html>

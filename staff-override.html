@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carpool — Staff Override</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#12261E; --paper:#F6F3EC; --amber:#C97A2B; --amber-dark:#8A5518; --line-gray:#D8D2C4; --card:#FFFFFF; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; padding:30px 20px; }
+  .wrap { max-width:480px; margin:0 auto; }
+  h1 { font-family:'DM Serif Display',serif; font-size:24px; margin:0 0 4px; }
+  .sub { color:#6B6355; font-size:14px; margin-bottom:26px; }
+  .card { background:var(--card); border:1px solid var(--line-gray); border-radius:16px; padding:20px 22px; }
+  .row { display:flex; justify-content:space-between; align-items:center; font-size:14px; padding:8px 0; border-top:1px solid var(--line-gray); }
+  .row:first-of-type { border-top:none; }
+  .row .label { color:#6B6355; }
+  .btns { display:flex; gap:10px; margin-top:14px; }
+  button {
+    flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--amber);
+    background:transparent; color:var(--amber-dark); font-family:inherit; font-weight:700; font-size:13px; cursor:pointer;
+  }
+  button:active { background: rgba(201,122,43,0.1); }
+  .note { font-size:12px; color:#A9A296; text-align:center; margin-top:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Staff Override</h1>
+  <div class="sub">Only use this if a batch doesn't match what's happening in the line.</div>
+  <div class="card" id="card"></div>
+  <div class="note">Auto-refreshes every 10 seconds.</div>
+</div>
+
+<script>
+// STEP 6 of the guide: paste your deployed Apps Script URL below.
+const APPS_SCRIPT_URL = 'REPLACE_WITH_YOUR_DEPLOYED_WEB_APP_URL';
+
+async function callApi(action, params) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.keys(params || {}).forEach(k => url.searchParams.set(k, params[k]));
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function render() {
+  const status = await callApi('status', {});
+  const card = document.getElementById('card');
+  card.innerHTML = `
+    <div class="row"><span class="label">Open batch</span>
+      <span>${status.openBatch ? 'accumulating since ' + new Date(status.openBatch.opened).toLocaleTimeString() : '—'}</span></div>
+    <div class="row"><span class="label">Ready batches</span>
+      <span>${status.readyBatches.length}</span></div>
+    <div class="btns">
+      <button id="triggerBtn" ${status.openBatch ? '' : 'disabled'}>Trigger Now</button>
+      <button id="closeBtn" ${status.readyBatches.length ? '' : 'disabled'}>Force Close</button>
+    </div>
+  `;
+  document.getElementById('triggerBtn').onclick = async () => {
+    await callApi('override', { overrideAction: 'trigger' });
+    render();
+  };
+  document.getElementById('closeBtn').onclick = async () => {
+    await callApi('override', { overrideAction: 'close' });
+    render();
+  };
+}
+
+render();
+setInterval(render, 10000);
+</script>
+</body>
+</html>
