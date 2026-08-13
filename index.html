@@ -191,13 +191,16 @@ function renderSetup(existing) {
       <input id="f_child" value="${p.child || ''}" placeholder="e.g. Neo"></div>
     <div class="field"><label>Classroom Number</label>
       <input id="f_classroom" value="${p.classroom || ''}" placeholder="e.g. 108"></div>
+    <div class="field"><label>Notes (optional)</label>
+      <input id="f_notes" value="${p.notes || ''}" placeholder="e.g. Silver Honda, or twins - blue backpack"></div>
     <button class="primary" id="saveBtn">Save & Continue</button>
   `;
   document.getElementById('saveBtn').onclick = () => {
     const profile = {
       family: document.getElementById('f_family').value.trim(),
       child: document.getElementById('f_child').value.trim(),
-      classroom: document.getElementById('f_classroom').value.trim()
+      classroom: document.getElementById('f_classroom').value.trim(),
+      notes: document.getElementById('f_notes').value.trim()
     };
     if (!profile.family || !profile.classroom) { alert('Please fill in family name and classroom.'); return; }
     saveProfile(profile);
@@ -218,7 +221,7 @@ function renderIdle(profile) {
     document.getElementById('inLineBtn').disabled = true;
     document.getElementById('inLineBtn').textContent = 'Checking in…';
     const res = await callApi('checkin', {
-      family: profile.family, classroom: profile.classroom
+      family: profile.family, classroom: profile.classroom, child: profile.child || '', notes: profile.notes || ''
     });
     if (res.ok) {
       setTripState({ stage: 'inline' });
