@@ -64,7 +64,13 @@
     border: 1px solid rgba(224,163,74,0.4);
     padding: 8px 16px; border-radius: 999px; font-size: 16px;
   }
+  .waiting-chip .chip-meta { display: block; font-size: 12px; opacity: 0.75; margin-top: 2px; font-weight: 400; }
   .waiting-empty { font-size: 16px; color: #6B8A78; }
+
+  .ready-entry { margin-bottom: 18px; }
+  .ready-entry:last-child { margin-bottom: 0; }
+  .ready-child { font-family: 'DM Serif Display', serif; font-size: 46px; line-height: 1.2; }
+  .ready-meta { font-size: 16px; color: #9FBCA9; margin-top: 2px; }
 
   footer { padding: 14px 40px; font-size: 12px; color: #6B8A78; text-align: right; }
 </style>
@@ -141,18 +147,40 @@ async function poll(room) {
     const readyNames = document.getElementById('readyNames');
     if (data.ready.length > 0) {
       readyPanel.style.display = 'block';
-      readyNames.innerHTML = data.ready.join('<br>');
+      readyNames.innerHTML = data.ready.map(entryHtml).join('');
     } else {
       readyPanel.style.display = 'none';
     }
 
     const waitingGrid = document.getElementById('waitingGrid');
     waitingGrid.innerHTML = data.waiting.length
-      ? data.waiting.map(f => `<div class="waiting-chip">${f}</div>`).join('')
+      ? data.waiting.map(chipHtml).join('')
       : `<div class="waiting-empty">No families waiting.</div>`;
   } catch (err) {
     console.error(err);
   }
+}
+
+// A ready entry shows the child's name big (that's who the teacher is
+// looking for), with the family name and any notes underneath as
+// supporting detail — falls back to the family name if no child name
+// was given.
+function entryHtml(f) {
+  const mainName = f.child || f.family;
+  const metaParts = [];
+  if (f.child && f.family) metaParts.push(f.family);
+  if (f.notes) metaParts.push(f.notes);
+  const meta = metaParts.length ? `<div class="ready-meta">${metaParts.join(' · ')}</div>` : '';
+  return `<div class="ready-entry"><div class="ready-child">${mainName}</div>${meta}</div>`;
+}
+
+function chipHtml(f) {
+  const mainName = f.child || f.family;
+  const metaParts = [];
+  if (f.child && f.family) metaParts.push(f.family);
+  if (f.notes) metaParts.push(f.notes);
+  const meta = metaParts.length ? `<span class="chip-meta">${metaParts.join(' · ')}</span>` : '';
+  return `<div class="waiting-chip">${mainName}${meta}</div>`;
 }
 
 function init() {
