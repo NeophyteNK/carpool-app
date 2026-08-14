@@ -186,9 +186,9 @@ function renderSetup(existing) {
   footerNote.textContent = '';
   body.innerHTML = `
     <div class="field"><label>Family Name</label>
-      <input id="f_family" value="${p.family || ''}" placeholder="e.g. Khor Family"></div>
+      <input id="f_family" value="${p.family || ''}" placeholder="e.g. Smith Family"></div>
     <div class="field"><label>Child's Name</label>
-      <input id="f_child" value="${p.child || ''}" placeholder="e.g. Neo"></div>
+      <input id="f_child" value="${p.child || ''}" placeholder="e.g. Jordan"></div>
     <div class="field"><label>Classroom Number</label>
       <input id="f_classroom" value="${p.classroom || ''}" placeholder="e.g. 108"></div>
     <div class="field"><label>Notes (optional)</label>
@@ -239,7 +239,7 @@ function renderInLine(profile) {
     <div class="status-screen">
       <span class="status-badge badge-waiting">In Line</span>
       <div class="status-headline">You're checked in.</div>
-      <div class="status-sub">The classroom will be flagged automatically once it's your group's turn — no need to tap again until pickup.</div>
+      <div class="status-sub">Your child's classroom can already see you're here — no need to tap again until pickup.</div>
       <div class="family-name">${profile.family}</div>
       <button class="secondary" id="gotEmBtn" style="margin-top:24px">Got 'em — child is in the car</button>
     </div>
