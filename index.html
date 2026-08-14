@@ -227,7 +227,8 @@ function renderIdle(profile) {
       setTripState({ stage: 'inline' });
       render();
     } else {
-      alert('Something went wrong — try again.');
+      console.error('Check-in failed:', res);
+      alert('Something went wrong: ' + (res.error || 'no error message returned') + '\n\nTry again, and if this keeps happening, send this exact message to Claude.');
       render();
     }
   };
