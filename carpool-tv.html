@@ -45,17 +45,12 @@
   .entry {
     background: linear-gradient(180deg, #1B4A34, #123322);
     border: 2px solid var(--gate-green-bright);
-    border-radius: 18px;
-    padding: 22px 28px;
-    margin-bottom: 16px;
-    animation: pulse 1.8s ease-in-out infinite;
+    border-radius: 14px;
+    padding: 14px 20px;
+    margin-bottom: 12px;
   }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 rgba(63,217,140,0); }
-    50% { box-shadow: 0 0 30px rgba(63,217,140,0.3); }
-  }
-  .entry-child { font-family: 'DM Serif Display', serif; font-size: 40px; line-height: 1.2; }
-  .entry-meta { font-size: 15px; color: #9FBCA9; margin-top: 4px; }
+  .entry-child { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1.2; }
+  .entry-meta { font-size: 13px; color: #9FBCA9; margin-top: 3px; }
 
   .empty-state { font-size: 16px; color: #6B8A78; }
 
@@ -145,6 +140,8 @@ function pickedChipHtml(f) {
   return `<div class="picked-chip"><span class="check">✓</span>${mainName}</div>`;
 }
 
+let lastRenderedKey = '';
+
 async function poll(room) {
   try {
     const url = new URL(APPS_SCRIPT_URL);
@@ -153,6 +150,13 @@ async function poll(room) {
     const res = await fetch(url);
     const data = await res.json();
     if (!data.ok) return;
+
+    // Skip re-rendering entirely if nothing has actually changed
+    // since the last successful poll — this is what prevents any
+    // flash on the normal 10-second refresh.
+    const key = JSON.stringify(data.families);
+    if (key === lastRenderedKey) return;
+    lastRenderedKey = key;
 
     const waiting = data.families.filter(f => f.status === 'InLine');
     const pickedUp = data.families.filter(f => f.status === 'GotEm');
