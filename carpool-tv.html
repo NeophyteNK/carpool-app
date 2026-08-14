@@ -59,6 +59,18 @@
 
   .empty-state { font-size: 16px; color: #6B8A78; }
 
+  .section-label {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.16em;
+    color: #6B8A78; margin: 28px 0 14px; font-weight: 700;
+  }
+  .picked-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .picked-chip {
+    background: var(--panel); border: 1px solid var(--line-gray);
+    padding: 8px 16px; border-radius: 999px; font-size: 15px; color: #7FA893;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .picked-chip .check { color: var(--gate-green-bright); }
+
   footer { padding: 14px 40px; font-size: 12px; color: #6B8A78; text-align: right; }
   footer span { cursor: pointer; text-decoration: underline; }
 </style>
@@ -80,6 +92,8 @@
   <main>
     <div class="panel-label">Waiting for pickup — send them outside</div>
     <div id="entries"></div>
+    <div class="section-label">Already picked up today</div>
+    <div id="pickedGrid" class="picked-grid"></div>
   </main>
   <footer>
     <span onclick="showSetup()">Change room</span>
@@ -126,6 +140,11 @@ function entryHtml(f) {
   return `<div class="entry"><div class="entry-child">${mainName}</div>${meta}</div>`;
 }
 
+function pickedChipHtml(f) {
+  const mainName = f.child || f.family;
+  return `<div class="picked-chip"><span class="check">✓</span>${mainName}</div>`;
+}
+
 async function poll(room) {
   try {
     const url = new URL(APPS_SCRIPT_URL);
@@ -135,10 +154,18 @@ async function poll(room) {
     const data = await res.json();
     if (!data.ok) return;
 
+    const waiting = data.families.filter(f => f.status === 'InLine');
+    const pickedUp = data.families.filter(f => f.status === 'GotEm');
+
     const entries = document.getElementById('entries');
-    entries.innerHTML = data.families.length
-      ? data.families.map(entryHtml).join('')
+    entries.innerHTML = waiting.length
+      ? waiting.map(entryHtml).join('')
       : `<div class="empty-state">No families waiting.</div>`;
+
+    const pickedGrid = document.getElementById('pickedGrid');
+    pickedGrid.innerHTML = pickedUp.length
+      ? pickedUp.map(pickedChipHtml).join('')
+      : `<div class="empty-state">No one picked up yet today.</div>`;
   } catch (err) {
     console.error(err);
   }
