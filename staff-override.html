@@ -3,34 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carpool — Staff Override</title>
+<title>Carpool — Staff</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root { --ink:#12261E; --paper:#F6F3EC; --amber:#C97A2B; --amber-dark:#8A5518; --line-gray:#D8D2C4; --card:#FFFFFF; }
   * { box-sizing: border-box; }
   body { margin:0; font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; padding:30px 20px; }
-  .wrap { max-width:480px; margin:0 auto; }
+  .wrap { max-width:520px; margin:0 auto; }
   h1 { font-family:'DM Serif Display',serif; font-size:24px; margin:0 0 4px; }
-  .sub { color:#6B6355; font-size:14px; margin-bottom:26px; }
-  .card { background:var(--card); border:1px solid var(--line-gray); border-radius:16px; padding:20px 22px; }
-  .row { display:flex; justify-content:space-between; align-items:center; font-size:14px; padding:8px 0; border-top:1px solid var(--line-gray); }
-  .row:first-of-type { border-top:none; }
-  .row .label { color:#6B6355; }
-  .btns { display:flex; gap:10px; margin-top:14px; }
-  button {
-    flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--amber);
-    background:transparent; color:var(--amber-dark); font-family:inherit; font-weight:700; font-size:13px; cursor:pointer;
+  .sub { color:#6B6355; font-size:14px; margin-bottom:22px; }
+  .card { background:var(--card); border:1px solid var(--line-gray); border-radius:14px; padding:16px 18px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .info .name { font-family:'DM Serif Display',serif; font-size:17px; }
+  .info .meta { font-size:12.5px; color:#6B6355; margin-top:2px; }
+  .pickup-btn {
+    flex-shrink:0; padding:10px 14px; border-radius:10px; border:1.5px solid var(--amber);
+    background:transparent; color:var(--amber-dark); font-family:inherit; font-weight:700; font-size:12.5px; cursor:pointer;
   }
-  button:active { background: rgba(201,122,43,0.1); }
-  .note { font-size:12px; color:#A9A296; text-align:center; margin-top:20px; }
+  .pickup-btn:active { background: rgba(201,122,43,0.1); }
+  .empty { text-align:center; color:#A9A296; font-size:14px; padding:30px 0; }
+  .note { font-size:12px; color:#A9A296; text-align:center; margin-top:16px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Staff Override</h1>
-  <div class="sub">Only use this if a batch doesn't match what's happening in the line.</div>
-  <div class="card" id="card"></div>
+  <h1>Staff</h1>
+  <div class="sub">Everyone currently checked in, across every classroom. Use "Mark picked up" only if a parent forgot to tap it themselves.</div>
+  <div id="list"></div>
   <div class="note">Auto-refreshes every 10 seconds.</div>
 </div>
 
@@ -45,27 +44,45 @@ async function callApi(action, params) {
   return res.json();
 }
 
+function timeAgo(iso) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  return mins + ' min ago';
+}
+
 async function render() {
-  const status = await callApi('status', {});
-  const card = document.getElementById('card');
-  card.innerHTML = `
-    <div class="row"><span class="label">Open batch</span>
-      <span>${status.openBatch ? 'accumulating since ' + new Date(status.openBatch.opened).toLocaleTimeString() : '—'}</span></div>
-    <div class="row"><span class="label">Ready batches</span>
-      <span>${status.readyBatches.length}</span></div>
-    <div class="btns">
-      <button id="triggerBtn" ${status.openBatch ? '' : 'disabled'}>Trigger Now</button>
-      <button id="closeBtn" ${status.readyBatches.length ? '' : 'disabled'}>Force Close</button>
-    </div>
-  `;
-  document.getElementById('triggerBtn').onclick = async () => {
-    await callApi('override', { overrideAction: 'trigger' });
-    render();
-  };
-  document.getElementById('closeBtn').onclick = async () => {
-    await callApi('override', { overrideAction: 'close' });
-    render();
-  };
+  const res = await callApi('staffList', {});
+  const list = document.getElementById('list');
+  if (!res.ok || !res.families.length) {
+    list.innerHTML = `<div class="empty">No one currently checked in.</div>`;
+    return;
+  }
+  list.innerHTML = res.families.map(f => {
+    const mainName = f.child || f.family;
+    const metaParts = [`Room ${f.classroom}`];
+    if (f.child) metaParts.push(f.family);
+    if (f.notes) metaParts.push(f.notes);
+    metaParts.push(timeAgo(f.checkInTime));
+    return `
+      <div class="card">
+        <div class="info">
+          <div class="name">${mainName}</div>
+          <div class="meta">${metaParts.join(' · ')}</div>
+        </div>
+        <button class="pickup-btn" data-family="${f.family}">Mark picked up</button>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.pickup-btn').forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = '…';
+      await callApi('gotem', { family: btn.dataset.family });
+      render();
+    };
+  });
 }
 
 render();
